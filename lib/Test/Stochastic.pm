@@ -6,12 +6,14 @@ use warnings;
 
 use Test::More;
 use Scalar::Util qw(reftype);
+use English qw{-no_match_vars};
 
 require Exporter;
 
 our @ISA = qw(Exporter);
 our %EXPORT_TAGS = ( 'all' => [ qw(
 				   stochastic_ok
+                                   stochastic_nok
 ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
@@ -20,16 +22,15 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '0.00_01';
+our $VERSION = '0.01';
 $VERSION = eval $VERSION;  # see L<perlmodstyle>
 
-my $TIMES = 100;
-my $TOLERENCE = 0.1;
+my $TIMES = 1000;
+my $TOLERENCE = 0.2;
 
-sub stochastic_ok {
-  my ($arg1, $arg2, $msg) = @_;
+sub _check_probabilities{
+  my ($arg1, $arg2) = @_;
   my ($sub, $hash);
-  $msg ||= "stochastic_ok";
 
   if (reftype($arg1) eq "CODE") {
     ($sub, $hash) = ($arg1, $arg2);
@@ -44,16 +45,40 @@ sub stochastic_ok {
 
   while (my($k, $v) = each %$hash) {
     my ($min, $max) = _get_acceptable_range($v, $TIMES, $TOLERENCE);
-    next if ($min <= $seen{$k} and $seen{$k} <= $max);
-    
-    $msg = "Value out of range for '$k': expected to see it between $min and $max times, but instead saw it $seen{$k} times";
-    ok(0, $msg);
-    return;
+    next if (($min <= $seen{$k}) and ($seen{$k} <= $max));
+    my $msg = "Value out of range for '$k': expected to see it between $min and $max times, but instead saw it $seen{$k} times\n";
+    die $msg;
   }
 
-  ok(1, $msg);
+  return 1;
+
 
 }
+
+sub stochastic_ok {
+  my ($arg1, $arg2, $msg) = @_;
+  $msg ||= "stochastic_ok";
+
+  eval { _check_probabilities($arg1, $arg2)};
+  if ($EVAL_ERROR) {
+    ok(0, $EVAL_ERROR);
+  } else {
+    ok(1, $msg);
+  }
+}
+
+sub stochastic_nok{
+    my ( $arg1, $arg2, $msg ) = @_;
+    $msg ||= "stochastic_nok";
+    
+    eval { _check_probabilities($arg1, $arg2)};
+    if ($EVAL_ERROR) {
+        ok(1, $msg);
+    } else {
+        ok(1, "stochastic_nok -- unexpectedly in range");
+    } 
+}
+
 
 sub setup{
   my (%hash) = @_;
@@ -70,8 +95,8 @@ sub setup{
 
 sub _get_acceptable_range{
   my ($p, $times, $tolerence) = @_;
-  return(  ($p-$tolerence) * $times,
-	   ($p+$tolerence) * $times
+  return(  int(($p  - $tolerence) * $times),
+	   int(($p  + $tolerence) * $times + 0.999)
 	);
 }
 

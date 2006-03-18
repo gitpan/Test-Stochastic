@@ -3,8 +3,8 @@
 
 #########################
 
-use Test::More tests => 6;
-use Test::Stochastic qw{stochastic_ok};
+use Test::More tests => 18;
+use Test::Stochastic qw{stochastic_ok stochastic_nok};
 
 #########################
 
@@ -28,4 +28,25 @@ stochastic_ok $sub_biased_abcd, { a=>0.1, b=> 0.2, c=>0.3, d => 0.4};
 stochastic_ok {a => 1}, $sub_uniform_a;
 stochastic_ok {a => 0.25, b => 0.25, c => 0.25}, $sub_uniform_abcd;
 stochastic_ok { a=>0.1, b=> 0.2, c=>0.3, d => 0.4}, $sub_biased_abcd;
+
+stochastic_nok {a => 0.8}, $sub_uniform_a;
+stochastic_nok {a => 0.5, b => 0.25, c => 0.25}, $sub_uniform_abcd;
+stochastic_nok { a=>0.3, b=> 0.2, c=>0.3, d => 0.4}, $sub_biased_abcd;
+
+Test::Stochastic::setup(tolerence => 0.5);
+stochastic_ok {a => 0.8}, $sub_uniform_a;
+stochastic_ok {a => 0.5, b => 0.25, c => 0.25}, $sub_uniform_abcd;
+stochastic_ok { a=>0.3, b=> 0.2, c=>0.3, d => 0.4}, $sub_biased_abcd;
+
+Test::Stochastic::setup(tolerence => 0.02, times => 10000);
+stochastic_ok {a => 1}, $sub_uniform_a;
+stochastic_ok {a => 0.25, b => 0.25, c => 0.25}, $sub_uniform_abcd;
+stochastic_ok { a=>0.1, b=> 0.2, c=>0.3, d => 0.4}, $sub_biased_abcd;
+
+Test::Stochastic::setup(tolerence => 0.005, times => 100000);
+stochastic_ok {a => 1}, $sub_uniform_a;
+stochastic_ok {a => 0.25, b => 0.25, c => 0.25}, $sub_uniform_abcd;
+stochastic_ok { a=>0.1, b=> 0.2, c=>0.3, d => 0.4}, $sub_biased_abcd;
+
+
 
