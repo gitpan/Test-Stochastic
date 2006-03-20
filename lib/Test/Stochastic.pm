@@ -14,6 +14,8 @@ our @ISA = qw(Exporter);
 our %EXPORT_TAGS = ( 'all' => [ qw(
 				   stochastic_ok
                                    stochastic_nok
+                                   stochastic_all_seen_ok
+                                   stochastic_all_seen_nok
 ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
@@ -22,7 +24,7 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 $VERSION = eval $VERSION;  # see L<perlmodstyle>
 
 my $TIMES = 1000;
@@ -55,6 +57,28 @@ sub _check_probabilities{
 
 }
 
+sub _check_all_present{
+  my ($arg1, $arg2) = @_;
+  my ($sub, $arr);
+
+  if (reftype($arg1) eq "CODE") {
+    ($sub, $arr) = ($arg1, $arg2);
+  } else {
+    ($sub, $arr) = ($arg2, $arg1);
+  }
+
+  my %to_see = map { $_ => 1 } @$arr;
+  for (1..$TIMES) {
+    delete $to_see{ $sub->() };
+    unless (%to_see) {
+        return 1;
+    }
+  }
+
+  die "Not all expected outputs seen: missing ". join(', ', keys %to_see);
+}
+
+
 sub stochastic_ok {
   my ($arg1, $arg2, $msg) = @_;
   $msg ||= "stochastic_ok";
@@ -67,6 +91,7 @@ sub stochastic_ok {
   }
 }
 
+
 sub stochastic_nok{
     my ( $arg1, $arg2, $msg ) = @_;
     $msg ||= "stochastic_nok";
@@ -77,6 +102,29 @@ sub stochastic_nok{
     } else {
         ok(1, "stochastic_nok -- unexpectedly in range");
     } 
+}
+
+sub stochastic_all_seen_ok{
+    my ( $arr, $sub, $msg ) = @_;
+    eval { _check_all_present($arr, $sub) };
+    if ($EVAL_ERROR) {
+        ok(0, $EVAL_ERROR);
+    } else {
+        ok( 1, $msg || "stochastic_all_seen_ok" );
+
+    }
+}
+
+
+sub stochastic_all_seen_nok{
+    my ( $arr, $sub, $msg ) = @_;
+    eval { _check_all_present($arr, $sub) };
+    if ($EVAL_ERROR) {
+        ok(1, $msg || "stochastic_all_seen_nok");
+    } else {
+        ok( 0, "stochastic_all_seen_nok: unexpectedly saw everything" );
+
+    }
 }
 
 
