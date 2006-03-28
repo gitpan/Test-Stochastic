@@ -3,9 +3,11 @@
 
 #########################
 
-use Test::More tests => 20;
+use Test::More tests => 24;
 use Test::Stochastic qw{stochastic_ok stochastic_nok
                         stochastic_all_seen_ok stochastic_all_seen_nok
+                        stochastic_all_and_only_ok
+                        stochastic_all_and_only_nok
                     };
 
 #########################
@@ -50,9 +52,17 @@ stochastic_ok {a => 1}, $sub_uniform_a;
 stochastic_ok {a => 0.25, b => 0.25, c => 0.25}, $sub_uniform_abcd;
 stochastic_ok { a=>0.1, b=> 0.2, c=>0.3, d => 0.4}, $sub_biased_abcd;
 
-Test::Stochastic::setup( times => 10 );
+Test::Stochastic::setup( times => 15 );
 stochastic_all_seen_ok [qw(a b)], $sub_uniform_abcd;
 stochastic_all_seen_nok [qw(a b)], $sub_uniform_a;
+
+
+stochastic_all_and_only_ok [qw(a b c d)], $sub_uniform_abcd;
+stochastic_all_and_only_ok [qw(a)], $sub_uniform_a;
+
+
+stochastic_all_and_only_nok [qw(a b d)], $sub_uniform_abcd;
+stochastic_all_and_only_nok [qw()], $sub_uniform_a;
 
 
 

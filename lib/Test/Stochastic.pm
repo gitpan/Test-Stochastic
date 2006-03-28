@@ -16,6 +16,8 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
                                    stochastic_nok
                                    stochastic_all_seen_ok
                                    stochastic_all_seen_nok
+                                   stochastic_all_and_only_ok
+                                   stochastic_all_and_only_nok
 ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
@@ -24,7 +26,7 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 $VERSION = eval $VERSION;  # see L<perlmodstyle>
 
 my $TIMES = 1000;
@@ -78,6 +80,30 @@ sub _check_all_present{
   die "Not all expected outputs seen: missing ". join(', ', keys %to_see);
 }
 
+sub _check_all_and_only_present{
+  my ($arg1, $arg2) = @_;
+  my ($sub, $arr);
+
+  if (reftype($arg1) eq "CODE") {
+    ($sub, $arr) = ($arg1, $arg2);
+  } else {
+    ($sub, $arr) = ($arg2, $arg1);
+  }
+
+  my %to_see = map { $_ => 1 } @$arr;
+  my %still_to_see = %to_see;
+  for (1..$TIMES) {
+      my $val = $sub->();
+      die "unexpected value $val" unless exists $to_see{$val};
+      delete $still_to_see{ $val };
+  }
+
+  unless (%still_to_see) {
+      return 1;
+  }
+  die "Not all expected outputs seen: missing ". join(', ', keys %to_see);
+}
+
 
 sub stochastic_ok {
   my ($arg1, $arg2, $msg) = @_;
@@ -124,6 +150,27 @@ sub stochastic_all_seen_nok{
     } else {
         ok( 0, "stochastic_all_seen_nok: unexpectedly saw everything" );
 
+    }
+}
+
+sub stochastic_all_and_only_ok{
+    my ( $arr, $sub, $msg ) = @_;
+    eval { _check_all_and_only_present($arr, $sub) };
+    if ($EVAL_ERROR) {
+        ok(0, $EVAL_ERROR);
+    } else {
+        ok( 1, $msg || "stochastic_all_and_only_ok" );
+
+    }
+}
+
+sub stochastic_all_and_only_nok{
+    my ( $arr, $sub, $msg ) = @_;
+    eval { _check_all_and_only_present($arr, $sub) };
+    if ($EVAL_ERROR) {
+        ok( 1, $msg || "stochastic_all_and_only_nok" );
+    } else {
+        ok(0, "stochastic_all_and_only_nok");
     }
 }
 
